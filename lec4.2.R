@@ -1,0 +1,62 @@
+## Make this lec5.1.R
+library(data.table)
+library(plm)
+wagepan <- wpull('wagepan')
+pdfwagepan <- pdata.frame(wagepan,index=c('nr','year'))
+typeof(pdfwagepan)
+## nr is the individual identifier.
+# index=c('individual identifier','time identifier')
+class(wagepan)
+class(pdfwagepan)##lost (data.table) property so, we can't deal with the functions related to it.
+sapply(pdfwagepan,class)
+
+modela <- lm(lwage~educ+exper,data=wagepan)
+modela <- plm(lwage~educ+exper,data=pdfwagepan,model='pooling')
+summary(modela)  ## Pooled OLS
+
+modelb <- plm(lwage~educ+exper,data=pdfwagepan,model='within') ## Note :- Intercepts are hidden as they are 545 values and almost similar so it automatically hides up the values.
+summary(modelb)  ## Individual fixed-effects # Because education doesn't change over time, after looking at the SD. So, that's why educ is not present in this summary.
+fixef(modelb)
+head(fixef(modelb)) ## Keeping all individual characterists the same, what is the effect of changing experience
+
+wagepan[,sd(educ),by=nr]
+summary(wagepan[,sd(educ),by=nr]) ## all 0's SD, so educ is not present here.
+
+modelc <- plm(lwage~educ+exper,data=pdfwagepan,model='within',effect='time')
+summary(modelc)  ## Time fixed effects
+fixef(modelc)  ## Keeping all time-specific factors the same what is the effect of education on the wage?
+
+plm::vcovHC(modelb)  ## HAC estimator 
+## HAC: Heteroskedasticity and Autocorrelation Consistent estimator (if you have panel data)
+## Works if n >> T
+tidyhac <- function(model,...){
+  warning('n must be much greater than T')
+  return(tidyg(model,plm::vcovHC(model),...))
+}
+tidyhac(modelb)
+tidyhac(modela)
+tidyhac(modelc)
+
+modeld <- plm(lwage~exper,data=pdfwagepan,model='within',effect = "twoways") ##ERROR
+
+modeld <- plm(lwage~educ+exper+as.factor(year),data=pdfwagepan,model='within')
+summary(modeld)  ## Two way effects
+fixef(modeld)
+
+jtrain <- wpull('jtrain')
+summary(jtrain)
+View(jtrain)
+pdfjtrain <- pdata.frame(jtrain,index=c('fcode','year'))
+
+modela <- plm(log(scrap)~as.factor(year)+grant+lag(grant),data=pdfjtrain,model="pooling")
+modelb <- plm(log(scrap)~as.factor(year)+grant+lag(grant),data=pdfjtrain,model="within")
+tidyhac(modela)
+tidyhac(modelb)
+
+## Simpson's paradox at work
+## 1st interpret the fixed-effects model
+##   A grant this year ==> 6% decrease in scrap
+##   A grant last year ==> 14% decrease in scrap
+##   ((For the individuals ie. firms))
+## 2nd interpret pooled ols
+##   There is a positive correlation between getting a grant and having a high scrap rate

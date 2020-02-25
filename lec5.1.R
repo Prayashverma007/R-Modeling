@@ -1,0 +1,57 @@
+## Make this lec5.2.R
+
+mroz <- wpull('mroz')
+summary(mroz$inlf)
+
+modela <- lm(inlf~age+educ+kidslt6+kidsge6+exper,data=mroz)
+
+summary(modela) ## Linear probability model
+
+# For every 1 year increase in educ, there is a 3% increase in the probability of being in the labor force.
+
+newwomen <- data.table(age=c(30,40,30),educ=c(16,20,12),kidslt6=c(0,0,3),kidsge6=c(0,2,0),exper=c(5,10,3))
+newwomen
+
+predict(modela,newwomen)  ## can't have negative probabilities
+mroz2 <- mroz
+mroz2$age <- median(mroz2$age)
+mroz2$kidslt6 <- median(mroz2$kidslt6)
+mroz2$kidsge6 <- median(mroz2$kidsge6)
+mroz2$exper <- median(mroz2$exper)
+ggplot(mroz,aes(x=educ,y=inlf))+geom_point()+geom_line(aes(y=predict(modela,mroz2)),color="red")
+
+##  Logistic (logit) regression
+modelb <- glm(inlf~age+educ+kidslt6+kidsge6+exper,data=mroz,family=binomial())  ## Assuming bernoulli (1), glm(generalized linear model)
+summary(modelb)
+tidy(modelb)
+glance(modelb)
+
+summary(step(modelb))
+sandwich::vcovHC(modelb)
+tidyw(modelb)
+
+predict(modelb,newwomen,type="response")
+
+ggplot(mroz,aes(x=educ,y=inlf))+geom_point()+
+  geom_line(aes(y=predict(modela,mroz2)),color="red")+
+  geom_line(aes(y=predict(modelb,mroz2,type="response")),color="blue")
+
+library(margins)
+margins(modelb)
+
+
+## A 1 year increase in education makes you 3.4% more likely to be in the labor force
+
+crime1 <- wpull('crime1')
+summary(crime1)
+
+modelc <- lm(narr86~avgsen+tottime+qemp86+black+hispan,data=crime1)
+summary(modelc)
+
+## A 1 quarter increase in employment ==> 0.08 decrease in the number of arrests
+
+modeld <- glm(narr86~avgsen+tottime+qemp86+black+hispan,data=crime1,family=poisson())
+summary(modeld)
+## Treat this model like a log model because log is the linking function
+## A 1 quarter increase in employment ==> 20% decrease in the number of arrests in '86
+
